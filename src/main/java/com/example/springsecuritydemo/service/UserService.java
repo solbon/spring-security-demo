@@ -33,6 +33,10 @@ public class UserService implements UserDetailsService {
         return userRepository.findById(id);
     }
 
+    public User getUser(String username) {
+        return userRepository.findByUsername(username);
+    }
+
     public List<User> getUsers() {
         return userRepository.findAll();
     }
