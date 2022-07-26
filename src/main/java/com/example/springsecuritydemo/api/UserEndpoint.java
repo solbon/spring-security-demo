@@ -1,12 +1,8 @@
 package com.example.springsecuritydemo.api;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.springsecuritydemo.model.Role;
 import com.example.springsecuritydemo.model.User;
-import com.example.springsecuritydemo.service.RoleService;
 import com.example.springsecuritydemo.service.UserService;
 import com.example.springsecuritydemo.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,8 +37,6 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class UserEndpoint {
 
     private final UserService userService;
-    private final RoleService roleService;
-
 
     @GetMapping("/users")
     public ResponseEntity<List<User>> getUsers() {
@@ -53,7 +47,7 @@ public class UserEndpoint {
     @GetMapping("/roles")
     public ResponseEntity<List<Role>> getRoles() {
         log.info("Received GET /roles request");
-        return ResponseEntity.ok().body(roleService.getRoles());
+        return ResponseEntity.ok().body(userService.getRoles());
     }
 
     @PostMapping("/user/save")
@@ -67,7 +61,7 @@ public class UserEndpoint {
     public ResponseEntity<Role> saveRole(@RequestBody Role role) {
         log.info("Received POST /role/save request: {}", role);
         URI uri = URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/api/role/save").toUriString());
-        return ResponseEntity.created(uri).body(roleService.saveRole(role));
+        return ResponseEntity.created(uri).body(userService.saveRole(role));
     }
 
     @PostMapping("/role/addtouser")
