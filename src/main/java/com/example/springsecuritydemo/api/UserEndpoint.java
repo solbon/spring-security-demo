@@ -8,6 +8,7 @@ import com.example.springsecuritydemo.model.Role;
 import com.example.springsecuritydemo.model.User;
 import com.example.springsecuritydemo.service.RoleService;
 import com.example.springsecuritydemo.service.UserService;
+import com.example.springsecuritydemo.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -85,24 +85,20 @@ public class UserEndpoint {
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             try {
                 String refreshToken = authorizationHeader.substring("Bearer ".length());
-                Algorithm algorithm = Algorithm.HMAC256("secret".getBytes());
-                JWTVerifier verifier = JWT.require(algorithm).build();
-                DecodedJWT decodedJWT = verifier.verify(refreshToken);
+
+                DecodedJWT decodedJWT = JwtUtil.getDecodedJWT(refreshToken);
                 String username = decodedJWT.getSubject();
 
                 User user = userService.getUser(username);
 
-                String accessToken = JWT.create()
-                    .withSubject(user.getUsername())
-                    .withExpiresAt(new Date(System.currentTimeMillis() + 10 * 60 * 1000))
-                    .withIssuer(request.getRequestURL().toString())
-                    .withClaim("roles", user.getRoles().stream().map(Role::getName).toList())
-                    .sign(algorithm);
-                Map<String, String> tokens = new HashMap<>();
-                tokens.put("access_token", accessToken);
-                tokens.put("refresh_token", refreshToken);
-                response.setContentType(APPLICATION_JSON_VALUE);
-                new ObjectMapper().writeValue(response.getOutputStream(), tokens);
+                String accessToken = JwtUtil.generateToken(
+                    user.getUsername(),
+                    request.getRequestURL().toString(),
+                    new Date(System.currentTimeMillis() + 10 * 60 * 1000),
+                    user.getRoles().stream().map(Role::getName).toList()
+                );
+
+                JwtUtil.addTokensToResponse(response, refreshToken, accessToken);
             } catch (Exception e) {
                 log.error("Error logging in: {}", e.getMessage());
                 response.setHeader("error", e.getMessage());
@@ -111,7 +107,6 @@ public class UserEndpoint {
                 error.put("error", e.getMessage());
                 response.setContentType(APPLICATION_JSON_VALUE);
                 new ObjectMapper().writeValue(response.getOutputStream(), error);
-
             }
         } else {
             throw new RuntimeException("Refresh token is missing");

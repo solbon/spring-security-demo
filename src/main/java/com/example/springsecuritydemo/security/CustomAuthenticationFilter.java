@@ -1,7 +1,6 @@
 package com.example.springsecuritydemo.security;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
+import com.example.springsecuritydemo.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,24 +47,21 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException, ServletException {
         log.info("successful Authentication: {}", authentication);
         User user = (User) authentication.getPrincipal();
-        Algorithm algorithm = Algorithm.HMAC256("secret".getBytes());
-        String accessToken = JWT.create()
-                .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 10 * 60 * 1000))
-                .withIssuer(request.getRequestURL().toString())
-                .withClaim("roles", user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
-                .sign(algorithm);
-        String refreshToken = JWT.create()
-                .withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 30 * 60 * 1000))
-                .withIssuer(request.getRequestURI())
-                .sign(algorithm);
+
+        String accessToken = JwtUtil.generateToken(user.getUsername(),
+            request.getRequestURL().toString(),
+            new Date(System.currentTimeMillis() + 10 * 60 * 1000),
+            user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList()
+            );
+        String refreshToken = JwtUtil.generateToken(user.getUsername(),
+            request.getRequestURL().toString(),
+            new Date(System.currentTimeMillis() + 30 * 60 * 1000),
+            user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList()
+            );
+
         response.setHeader("access_token", accessToken);
         response.setHeader("refresh_token", refreshToken);
-        Map<String, String> tokens = new HashMap<>();
-        tokens.put("access_token", accessToken);
-        tokens.put("refresh_token", refreshToken);
-        response.setContentType(APPLICATION_JSON_VALUE);
-        new ObjectMapper().writeValue(response.getOutputStream(), tokens);
+
+        JwtUtil.addTokensToResponse(response, accessToken, refreshToken);
     }
 }
